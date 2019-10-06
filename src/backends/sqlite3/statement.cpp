@@ -266,7 +266,7 @@ sqlite3_statement_backend::bind_and_execute(int number)
                 {
                     case dt_string:
                     case dt_date:
-                        bindRes = sqlite3_bind_text(stmt_, pos, col.buffer_.constData_, static_cast<int>(col.buffer_.size_), NULL);
+                        bindRes = sqlite3_bind_text(stmt_, pos, col.buffer_.constData_, static_cast<int>(col.buffer_.size_), SQLITE_TRANSIENT);
                         break;
 
                     case dt_double:
@@ -283,7 +283,7 @@ sqlite3_statement_backend::bind_and_execute(int number)
                         break;
 
                     case dt_blob:
-                        bindRes = sqlite3_bind_blob(stmt_, pos, col.buffer_.constData_, static_cast<int>(col.buffer_.size_), NULL);
+                        bindRes = sqlite3_bind_blob(stmt_, pos, col.buffer_.constData_, static_cast<int>(col.buffer_.size_), SQLITE_TRANSIENT);
                         break;
 
                     case dt_xml:
@@ -301,12 +301,15 @@ sqlite3_statement_backend::bind_and_execute(int number)
 
         // Handle the case where there are both into and use elements
         // in the same query and one of the into binds to a vector object.
-        if (1 == rows && number != rows)
+        if (number == 0)
+            return retVal;
+
+        if (number > 1)
         {
             return load_rowset(number);
         }
 
-        databaseReady_=true; // Mark sqlite engine is ready to perform sqlite3_step
+        databaseReady_ = true; // Mark sqlite engine is ready to perform sqlite3_step
         retVal = load_one(); // execute each bound line
         rowsAffectedBulkTemp += get_affected_rows();
     }
@@ -328,9 +331,9 @@ sqlite3_statement_backend::execute(int number)
 
     statement_backend::exec_fetch_result retVal = ef_no_data;
 
-    if (useData_.empty() == false)
+    if (!useData_.empty())
     {
-           retVal = bind_and_execute(number);
+        retVal = bind_and_execute(number);
     }
     else
     {
@@ -338,7 +341,7 @@ sqlite3_statement_backend::execute(int number)
         {
             retVal = load_one();
         }
-        else
+        else if (number > 1)
         {
             retVal = load_rowset(number);
         }
